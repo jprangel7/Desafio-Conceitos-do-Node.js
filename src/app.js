@@ -20,6 +20,21 @@ function logRequest(request, response, next) {
   return next();
 };
 
+function validateRepositoryId(request, response, next) {
+  const { id } = request.params;
+
+  const repositoryIndex = repositories.findIndex(repository =>
+    repository.id === id
+  );
+
+  if (repositoryIndex < 0)
+    return response.status(400).json({ error: 'Repository not found' });
+
+  response.locals.repositoryIndex = repositoryIndex;
+
+  next();
+}
+
 app.use(logRequest);
 
 app.get("/repositories", (request, response) => {
@@ -42,16 +57,11 @@ app.post("/repositories", (request, response) => {
   return response.json(repository);
 });
 
-app.put("/repositories/:id", (request, response) => {
+app.put("/repositories/:id", validateRepositoryId, (request, response) => {
   const { id } = request.params;
   const { title, url, techs } = request.body;
 
-  const repositoryIndex = repositories.findIndex(repository =>
-    repository.id === id
-  );
-
-  if (repositoryIndex < 0)
-    return response.status(400).json({ error: 'Repository not found' });
+  const repositoryIndex = response.locals.repositoryIndex;
 
   const { likes } = repositories[repositoryIndex];
 
@@ -68,30 +78,18 @@ app.put("/repositories/:id", (request, response) => {
   return response.json(repository);
 });
 
-app.delete("/repositories/:id", (request, response) => {
-  const { id } = request.params;
+app.delete("/repositories/:id", validateRepositoryId, (request, response) => {
 
-  const repositoryIndex = repositories.findIndex(repository =>
-    repository.id === id
-  );
-
-  if (repositoryIndex < 0)
-    return response.send(400).json({ error: 'Repository not found' });
+  const repositoryIndex = response.locals.repositoryIndex
 
   repositories.splice(repositoryIndex, 1);
 
   return response.status(204).send();
 });
 
-app.post("/repositories/:id/like", (request, response) => {
-  const { id } = request.params;
+app.post("/repositories/:id/like", validateRepositoryId, (request, response) => {
 
-  const repository = repositories.find(repository =>
-    repository.id === id
-  );
-
-  if (!repository)
-    return response.send(400).json({ error: 'Repository not found' });
+  const repository = repositories[response.locals.repositoryIndex];
 
   repository.likes += 1;
 
